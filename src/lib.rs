@@ -68,7 +68,7 @@ impl Screenshot {
 
 	/// Gets pixel at (row, col)
 	pub fn get_pixel(&self, row: usize, col: usize) -> Pixel {
-		let idx = (row*self.row_len() + col*self.pixel_width()) as isize;
+		let idx = (row*self.pixel_width() + col*self.row_len()) as isize;
 		unsafe {
 			let data = &self.data[0] as *const u8;
 			if idx as usize > self.raw_len() { panic!("Bounds overflow"); }
