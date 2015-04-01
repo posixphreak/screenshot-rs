@@ -11,9 +11,11 @@
 //!
 //! TODO Linux support. Contributions welcome.
 
-#![allow(unstable, unused_assignments)]
+#![feature(core, libc, collections)]
 
 extern crate libc;
+#[cfg(target_os="linux")]
+extern crate xlib;
 
 use std::intrinsics::{size_of, offset};
 pub use ffi::{get_screenshot};
@@ -89,6 +91,84 @@ impl AsSlice<u8> for Screenshot {
 }
 
 pub type ScreenResult = Result<Screenshot, &'static str>;
+
+#[cfg(target_os = "linux")]
+mod ffi {
+	use ::{Screenshot, ScreenResult};
+	use std::ptr::null_mut;
+	use libc::{c_int, c_uint};
+	use xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
+		XWindowAttributes, XGetWindowAttributes, XGetImage, XAllPlanes, ZPixmap};
+
+	pub fn get_screenshot(screen: usize) -> ScreenResult {
+		unsafe {
+			let display = XOpenDisplay(null_mut());
+			let screen = XScreenOfDisplay(display, screen as c_int);
+			let root = XRootWindowOfScreen(screen);
+
+			// Assign an empty/default XWindowAttribute variable
+			// The C equivalent is this:
+			//
+			//     XWindowAttribute attr; // uninitialized
+			//
+			// There should be an easier way to do this
+			let mut attr = XWindowAttributes {
+				x: 0,
+			    y: 0,
+			    width: 0,
+			    height: 0,
+			    border_width: 0,
+			    depth: 0,
+			    visual: null_mut(),
+			    root: 0,
+			    _class: 0,
+			    bit_gravity: 0,
+			    win_gravity: 0,
+			    backing_store: 0,
+			    backing_planes: 0,
+			    backing_pixel: 0,
+			    save_under: 0,
+			    colormap: 0,
+			    map_installed: 0,
+			    map_state: 0,
+			    all_event_masks: 0,
+			    your_event_mask: 0,
+			    do_not_propagate_mask: 0,
+			    override_redirect: 0,
+			    screen: null_mut(),
+			};
+			XGetWindowAttributes(display, root, &mut attr);
+
+			let img = XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
+				XAllPlanes(), ZPixmap);
+			let height = (*img).height as usize;
+			let width = (*img).width as usize;
+			let row_len = (*img).bytes_per_line as usize;
+			let pixel_bits = (*img).bits_per_pixel as usize;
+			if pixel_bits % 8 != 0 {
+				return Err("Pixels aren't integral bytes.");
+				// what's this integral byte even?
+				// perhaps meant 'integer', i'm not really sure
+			}
+			let pixel_width = pixel_bits / 8;
+
+			// Create a Vec for image
+			let size = (width*height) as usize * pixel_width;
+			let data = Vec::<u8>::from_raw_buf((*img).data as *const u8, size);
+
+			// TODO: Free more memory if possible
+			XCloseDisplay(display);
+
+			Ok(Screenshot {
+				data: data,
+				height: height,
+				width: width,
+				row_len: row_len, //not sure?
+				pixel_width: pixel_width, //not sure?
+			})
+		}
+	}
+}
 
 #[cfg(target_os = "macos")]
 mod ffi {
