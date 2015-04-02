@@ -156,13 +156,12 @@ mod ffi {
 			let size = (width*height) as usize * pixel_width;
 			let mut data = Vec::<u8>::from_raw_buf((*img).data as *mut u8, size);
 
-			// Fix Alpha channel which is always 0 for some reason
-			let mut n: usize = 0;
-			for channel in &mut data {
-				if n % 4 == 3 {
+			// Fix Alpha channel when xlib cannot retrieve info correctly
+			let has_alpha = data.iter().enumerate().any(|(n, x)| n % 4 == 3 && *x != 0);
+			if !has_alpha {
+				for (_, channel) in data.iter_mut().enumerate().filter(|&(n, _)| n % 4 == 3) {
 					*channel = 255;
 				}
-				n+=1;
 			}
 
 			// TODO: Free more memory if possible
