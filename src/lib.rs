@@ -14,8 +14,6 @@
 #![feature(core, libc, collections)]
 
 extern crate libc;
-#[cfg(target_os="linux")]
-extern crate xlib;
 
 use std::intrinsics::{size_of, offset};
 pub use ffi::{get_screenshot};
@@ -94,10 +92,12 @@ pub type ScreenResult = Result<Screenshot, &'static str>;
 
 #[cfg(target_os = "linux")]
 mod ffi {
+	extern crate xlib;
+
 	use ::{Screenshot, ScreenResult};
 	use std::ptr::null_mut;
 	use libc::{c_int, c_uint};
-	use xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
+	use self::xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
 		XWindowAttributes, XGetWindowAttributes, XGetImage, XAllPlanes, ZPixmap};
 
 	pub fn get_screenshot(screen: usize) -> ScreenResult {
