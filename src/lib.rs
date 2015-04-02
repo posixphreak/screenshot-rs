@@ -154,7 +154,16 @@ mod ffi {
 
 			// Create a Vec for image
 			let size = (width*height) as usize * pixel_width;
-			let data = Vec::<u8>::from_raw_buf((*img).data as *const u8, size);
+			let mut data = Vec::<u8>::from_raw_buf((*img).data as *mut u8, size);
+
+			// Fix Alpha channel which is always 0 for some reason
+			let mut n: usize = 0;
+			for channel in &mut data {
+				if n % 4 == 3 {
+					*channel = 255;
+				}
+				n+=1;
+			}
 
 			// TODO: Free more memory if possible
 			XCloseDisplay(display);
@@ -163,8 +172,8 @@ mod ffi {
 				data: data,
 				height: height,
 				width: width,
-				row_len: row_len, //not sure?
-				pixel_width: pixel_width, //not sure?
+				row_len: row_len,
+				pixel_width: pixel_width,
 			})
 		}
 	}
