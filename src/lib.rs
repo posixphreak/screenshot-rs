@@ -109,33 +109,33 @@ mod ffi {
 			// Assign an empty/default XWindowAttribute variable
 			// The C equivalent is this:
 			//
-			//     XWindowAttribute attr; // uninitialized
+			//    XWindowAttribute attr; // uninitialized
 			//
 			// There should be an easier way to do this
 			let mut attr = XWindowAttributes {
 				x: 0,
-			    y: 0,
-			    width: 0,
-			    height: 0,
-			    border_width: 0,
-			    depth: 0,
-			    visual: null_mut(),
-			    root: 0,
-			    _class: 0,
-			    bit_gravity: 0,
-			    win_gravity: 0,
-			    backing_store: 0,
-			    backing_planes: 0,
-			    backing_pixel: 0,
-			    save_under: 0,
-			    colormap: 0,
-			    map_installed: 0,
-			    map_state: 0,
-			    all_event_masks: 0,
-			    your_event_mask: 0,
-			    do_not_propagate_mask: 0,
-			    override_redirect: 0,
-			    screen: null_mut(),
+				y: 0,
+				width: 0,
+				height: 0,
+				border_width: 0,
+				depth: 0,
+				visual: null_mut(),
+				root: 0,
+				_class: 0,
+				bit_gravity: 0,
+				win_gravity: 0,
+				backing_store: 0,
+				backing_planes: 0,
+				backing_pixel: 0,
+				save_under: 0,
+				colormap: 0,
+				map_installed: 0,
+				map_state: 0,
+				all_event_masks: 0,
+				your_event_mask: 0,
+				do_not_propagate_mask: 0,
+				override_redirect: 0,
+				screen: null_mut(),
 			};
 			XGetWindowAttributes(display, root, &mut attr);
 
@@ -207,8 +207,8 @@ mod ffi {
 	#[link(name = "CoreGraphics", kind = "framework")]
 	extern "C" {
 		fn CGGetActiveDisplayList(max_displays: libc::uint32_t,
-	                              active_displays: *mut CGDirectDisplayID,
-	                              display_count: *mut CGDisplayCount) -> CGError;
+								  active_displays: *mut CGDirectDisplayID,
+								  display_count: *mut CGDisplayCount) -> CGError;
 		fn CGDisplayCreateImage(displayID: CGDirectDisplayID) -> CGImageRef;
 		fn CGImageRelease(image: CGImageRef);
 
@@ -390,7 +390,7 @@ mod ffi {
 		fn CreateCompatibleBitmap(hdc: HDC, nWidth: c_int, nHeight: c_int) -> HBITMAP;
 		fn SelectObject(hdc: HDC, hgdiobj: HGDIOBJ) -> HGDIOBJ;
 		fn BitBlt(hdcDest: HDC, nXDest: c_int, nYDest: c_int, nWidth: c_int, nHeight: c_int,
-                  hdcSrc: HDC, nXSrc: c_int, nYSrc: c_int, dwRop: DWORD) -> BOOL;
+				  hdcSrc: HDC, nXSrc: c_int, nYSrc: c_int, dwRop: DWORD) -> BOOL;
 		fn GetDIBits(hdc: HDC, hbmp: HBITMAP, uStartScan: UINT, cScanLines: UINT,
 					 lpvBits: LPVOID, lpbi: LPBITMAPINFO, uUsage: UINT) -> c_int;
 
