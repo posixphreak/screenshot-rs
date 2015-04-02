@@ -1,17 +1,14 @@
-#![allow(unstable)]
-#![feature(core)]
+#![allow(unused_must_use)]
 
 extern crate screenshot;
 extern crate bmp;
 extern crate image;
 
-use screenshot::get_screenshot;
-use bmp::{Image, Pixel};
 use std::path::Path;
 
 fn main() {
 	// X = Row (Width), Y = Col (Height)
-	let s = get_screenshot(0).unwrap();
+	let s = screenshot::get_screenshot(0).unwrap();
 
 	println!("{} x {} x {} = {} bytes", s.width(), s.height(), s.pixel_width(), s.raw_len());
 
@@ -24,17 +21,22 @@ fn main() {
 	let opp = s.get_pixel(s.width()-1, s.height()-1);
 	println!("(end,end): R: {}, G: {}, B: {}", opp.r, opp.g, opp.b);
 
-
-	let mut img = Image::new(s.width() as u32, s.height() as u32);
+	let mut img = bmp::Image::new(s.width() as u32, s.height() as u32);
+	// Rebuild data because Piston/image swaps R & B channels
+	let mut data = Vec::<u8>::new();
 	for y in 0..s.height() {
 		for x in 0..s.width() {
 			let p = s.get_pixel(x, y);
-			img.set_pixel(x as u32, y as u32, Pixel {r: p.r, g: p.g, b: p.b});
+			img.set_pixel(x as u32, y as u32, bmp::Pixel {r: p.r, g: p.g, b: p.b});
+
+			data.push(p.r);
+			data.push(p.g);
+			data.push(p.b);
+			data.push(p.a);
 		}
 	}
 	img.save("test.bmp");
 
-	image::save_buffer(&Path::new("test.png"),
-		s.as_slice(), s.width() as u32, s.height() as u32, image::RGBA(8))
-	.unwrap();
+	image::save_buffer(&Path::new("test.png"), &data,
+		s.width() as u32, s.height() as u32, image::RGBA(8)).unwrap();
 }
