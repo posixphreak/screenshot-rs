@@ -13,7 +13,7 @@
 
 extern crate libc;
 
-use std::intrinsics::{size_of, offset};
+use std::intrinsics::size_of;
 pub use ffi::{get_screenshot};
 
 #[derive(Clone, Copy)]
@@ -75,13 +75,6 @@ impl Screenshot {
 	}
 }
 
-impl AsSlice<u8> for Screenshot {
-	#[inline]
-	fn as_slice<'a>(&'a self) -> &'a [u8] {
-		self.data.as_slice()
-	}
-}
-
 pub type ScreenResult = Result<Screenshot, &'static str>;
 
 #[cfg(target_os = "linux")]
@@ -90,6 +83,7 @@ mod ffi {
 
 	use ::{Screenshot, ScreenResult};
 	use std::ptr::null_mut;
+	use std::mem;
 	use libc::{c_int, c_uint};
 	use self::xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
 		XWindowAttributes, XGetWindowAttributes, XGetImage, XAllPlanes, ZPixmap};
@@ -100,37 +94,7 @@ mod ffi {
 			let screen = XScreenOfDisplay(display, screen as c_int);
 			let root = XRootWindowOfScreen(screen);
 
-			// Assign an empty/default XWindowAttribute variable
-			// The C equivalent is this:
-			//
-			//    XWindowAttribute attr; // uninitialized
-			//
-			// There should be an easier way to do this
-			let mut attr = XWindowAttributes {
-				x: 0,
-				y: 0,
-				width: 0,
-				height: 0,
-				border_width: 0,
-				depth: 0,
-				visual: null_mut(),
-				root: 0,
-				_class: 0,
-				bit_gravity: 0,
-				win_gravity: 0,
-				backing_store: 0,
-				backing_planes: 0,
-				backing_pixel: 0,
-				save_under: 0,
-				colormap: 0,
-				map_installed: 0,
-				map_state: 0,
-				all_event_masks: 0,
-				your_event_mask: 0,
-				do_not_propagate_mask: 0,
-				override_redirect: 0,
-				screen: null_mut(),
-			};
+			let mut attr: XWindowAttributes = mem::uninitialized();
 			XGetWindowAttributes(display, root, &mut attr);
 
 			let img = &*XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
@@ -146,14 +110,16 @@ mod ffi {
 			let pixel_width = pixel_bits / 8;
 
 			// Create a Vec for image
-			let size = width * height * pixel_width;
+			let size= width * height * pixel_width;
 			let mut data = Vec::<u8>::from_raw_buf(img.data as *mut u8, size as usize);
 
 			// Fix Alpha channel when xlib cannot retrieve info correctly
 			let has_alpha = data.iter().enumerate().any(|(n, x)| n % 4 == 3 && *x != 0);
 			if !has_alpha {
-				for (_, channel) in data.iter_mut().enumerate().filter(|&(n, _)| n % 4 == 3) {
-					*channel = 255;
+				let mut n = 0;
+				for channel in &mut data {
+					if n % 4 == 3 { *channel = 255; }
+					n += 1;
 				}
 			}
 
