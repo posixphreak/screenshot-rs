@@ -1,3 +1,4 @@
+
 //! Capture a bitmap image of a display. The resulting screenshot is stored in
 //! the `Screenshot` type, which varies per platform.
 //!
@@ -8,9 +9,6 @@
 //!
 //! The Windows GDI bitmap has its coordinate origin at the bottom left. We
 //! attempt to undo this by reordering the rows. Windows also uses ARGB pixels.
-//!
-//! TODO Linux support. Contributions welcome.
-
 #![feature(core, libc, collections)]
 
 extern crate libc;
@@ -18,7 +16,7 @@ extern crate libc;
 use std::intrinsics::{size_of, offset};
 pub use ffi::{get_screenshot};
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct Pixel {
 	pub a: u8,
 	pub r: u8,
@@ -29,28 +27,28 @@ pub struct Pixel {
 /// An image buffer containing the screenshot.
 pub struct Screenshot {
 	data: Vec<u8>,
-	height: usize,
-	width: usize,
-	row_len: usize, // Might be superfluous
-	pixel_width: usize,
+	height: u32,
+	width: u32,
+	row_len: u32, // Might be superfluous
+	pixel_width: u32,
 }
 
 impl Screenshot {
 	/// Height of image in pixels.
 	#[inline]
-	pub fn height(&self) -> usize { self.height }
+	pub fn height(&self) -> u32 { self.height }
 
 	/// Width of image in pixels.
 	#[inline]
-	pub fn width(&self) -> usize { self.width }
+	pub fn width(&self) -> u32 { self.width }
 
 	/// Number of bytes in one row of bitmap.
 	#[inline]
-	pub fn row_len(&self) -> usize { self.row_len }
+	pub fn row_len(&self) -> u32 { self.row_len }
 
 	/// Width of pixel in bytes.
 	#[inline]
-	pub fn pixel_width(&self) -> usize { self.pixel_width }
+	pub fn pixel_width(&self) -> u32 { self.pixel_width }
 
 	/// Raw bitmap.
 	#[inline]
@@ -60,12 +58,12 @@ impl Screenshot {
 
 	/// Number of bytes in bitmap
 	#[inline]
-	pub fn raw_len(&self) -> usize {
-		self.data.len() * unsafe {size_of::<u8>()}
+	pub fn raw_len(&self) -> u32 {
+		self.data.len() * unsafe {size_of::<u8>()} as u32
 	}
 
 	/// Gets pixel at (row, col)
-	pub fn get_pixel(&self, row: usize, col: usize) -> Pixel {
+	pub fn get_pixel(&self, row: u32, col: u32) -> Pixel {
 		let idx = (row*self.pixel_width() + col*self.row_len()) as isize;
 		unsafe {
 			let data = &self.data[0] as *const u8;
@@ -100,7 +98,7 @@ mod ffi {
 	use self::xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
 		XWindowAttributes, XGetWindowAttributes, XGetImage, XAllPlanes, ZPixmap};
 
-	pub fn get_screenshot(screen: usize) -> ScreenResult {
+	pub fn get_screenshot(screen: u32) -> ScreenResult {
 		unsafe {
 			let display = XOpenDisplay(null_mut());
 			let screen = XScreenOfDisplay(display, screen as c_int);
@@ -139,22 +137,21 @@ mod ffi {
 			};
 			XGetWindowAttributes(display, root, &mut attr);
 
-			let img = XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
+			let img = &*XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
 				XAllPlanes(), ZPixmap);
-			let height = (*img).height as usize;
-			let width = (*img).width as usize;
-			let row_len = (*img).bytes_per_line as usize;
-			let pixel_bits = (*img).bits_per_pixel as usize;
+			let height = img.height as u32;
+			let width = img.width as u32;
+			let row_len = img.bytes_per_line as u32;
+			let pixel_bits = img.bits_per_pixel as u32;
 			if pixel_bits % 8 != 0 {
+				XCloseDisplay(display);
 				return Err("Pixels aren't integral bytes.");
-				// what's this integral byte even?
-				// perhaps meant 'integer', i'm not really sure
 			}
 			let pixel_width = pixel_bits / 8;
 
 			// Create a Vec for image
-			let size = (width*height) as usize * pixel_width;
-			let mut data = Vec::<u8>::from_raw_buf((*img).data as *mut u8, size);
+			let size = width * height * pixel_width;
+			let mut data = Vec::<u8>::from_raw_buf(img.data as *mut u8, size as usize);
 
 			// Fix Alpha channel when xlib cannot retrieve info correctly
 			let has_alpha = data.iter().enumerate().any(|(n, x)| n % 4 == 3 && *x != 0);
