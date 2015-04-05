@@ -1,3 +1,0 @@
-[submodule "rust-xlib"]
-	path = rust-xlib
-	url = https://github.com/servo/rust-xlib

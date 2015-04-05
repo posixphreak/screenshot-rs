@@ -10,11 +10,11 @@ readme = "README.md"
 license = "Unlicense"
 
 [target.x86_64-unknown-linux-gnu.dependencies.xlib]
-path = "rust-xlib"
+git = "https://github.com/servo/rust-xlib"
 [target.i686-unknown-linux-gnu.dependencies.xlib]
-path = "rust-xlib"
+git = "https://github.com/servo/rust-xlib"
 
 [dev-dependencies.bmp]
-bmp = "0.0.5"
+bmp = "*"
 [dev-dependencies.image]
 image = "*"
