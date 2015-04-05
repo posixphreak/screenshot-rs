@@ -64,17 +64,13 @@ impl Screenshot {
 
 	/// Gets pixel at (row, col)
 	pub fn get_pixel(&self, row: u32, col: u32) -> Pixel {
-		let idx = (row*self.pixel_width() + col*self.row_len()) as isize;
-		unsafe {
-			let data = &self.data[0] as *const u8;
-			if idx as usize > self.raw_len() { panic!("Bounds overflow"); }
-
-			Pixel {
-				a: *offset(data, idx+3),
-				r: *offset(data, idx+2),
-				g: *offset(data, idx+1),
-				b: *offset(data, idx),
-			}
+		let idx = (row*self.pixel_width() + col*self.row_len()) as usize;
+		// let the std library do the bounds checking
+		Pixel {
+			a: self.data[idx+3],
+			r: self.data[idx+2],
+			g: self.data[idx+1],
+			b: self.data[idx],
 		}
 	}
 }
