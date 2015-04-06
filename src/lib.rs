@@ -64,7 +64,7 @@ impl Screenshot {
 
 	/// Gets pixel at (row, col)
 	pub fn get_pixel(&self, row: u32, col: u32) -> Pixel {
-		let idx = (row*self.pixel_width() + col*self.row_len()) as usize;
+		let idx = (col * self.row_len() + row * self.pixel_width()) as usize;
 		// let the std library do the bounds checking
 		Pixel {
 			a: self.data[idx+3],
@@ -86,7 +86,7 @@ mod ffi {
 	use std::mem;
 	use libc::{c_int, c_uint};
 	use self::xlib::{XOpenDisplay, XCloseDisplay, XScreenOfDisplay, XRootWindowOfScreen,
-		XWindowAttributes, XGetWindowAttributes, XGetImage, XAllPlanes, ZPixmap};
+		XDestroyWindow, XWindowAttributes, XGetWindowAttributes, XImage, XGetImage, XAllPlanes, ZPixmap};
 
 	pub fn get_screenshot(screen: u32) -> ScreenResult {
 		unsafe {
@@ -97,21 +97,28 @@ mod ffi {
 			let mut attr: XWindowAttributes = mem::uninitialized();
 			XGetWindowAttributes(display, root, &mut attr);
 
-			let img = &*XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
+			let mut img = &mut *XGetImage(display, root, 0, 0, attr.width as c_uint, attr.height as c_uint,
 				XAllPlanes(), ZPixmap);
+			XDestroyWindow(display, root);
+			XCloseDisplay(display);
+			// This is the function which XDestroyImage macro calls.
+			// servo/rust-xlib doesn't handle function pointers correctly.
+			// We have to transmute the variable.
+			let destroy_image: extern fn(*mut XImage) -> c_int = mem::transmute(img.f.destroy_image);
 			let height = img.height as u32;
 			let width = img.width as u32;
 			let row_len = img.bytes_per_line as u32;
 			let pixel_bits = img.bits_per_pixel as u32;
 			if pixel_bits % 8 != 0 {
-				XCloseDisplay(display);
+				destroy_image(&mut *img);
 				return Err("Pixels aren't integral bytes.");
 			}
 			let pixel_width = pixel_bits / 8;
 
 			// Create a Vec for image
-			let size= width * height * pixel_width;
+			let size = width * height * pixel_width;
 			let mut data = Vec::<u8>::from_raw_buf(img.data as *mut u8, size as usize);
+			destroy_image(&mut *img);
 
 			// Fix Alpha channel when xlib cannot retrieve info correctly
 			let has_alpha = data.iter().enumerate().any(|(n, x)| n % 4 == 3 && *x != 0);
@@ -122,9 +129,6 @@ mod ffi {
 					n += 1;
 				}
 			}
-
-			// TODO: Free more memory if possible
-			XCloseDisplay(display);
 
 			Ok(Screenshot {
 				data: data,
